@@ -4,7 +4,6 @@ import pandas as pd
 import ta
 import time
 import plotly.graph_objects as go
-import numpy as np
 
 st.set_page_config(layout="wide")
 st.title("Dashboard Avançado de Scalp com Sinais C/V/N")
@@ -13,7 +12,9 @@ st.title("Dashboard Avançado de Scalp com Sinais C/V/N")
 ticker_input = st.text_input("Digite o símbolo do ativo (ex: AAPL, TSLA, WDO=F):", "AAPL")
 update_interval = st.number_input("Intervalo de atualização (segundos):", min_value=10, value=60, step=10)
 
-# Função para calcular indicadores técnicos
+# -----------------------------
+# Função para calcular indicadores
+# -----------------------------
 def calcular_indicadores(df):
     df = df.copy()
     df['SMA5'] = df['Close'].rolling(5).mean()
@@ -30,7 +31,9 @@ def calcular_indicadores(df):
     df['Pivot'] = (df['High'] + df['Low'] + df['Close']) / 3
     return df
 
-# Função para determinar C/V/N por vela
+# -----------------------------
+# Função para sinais C/V/N
+# -----------------------------
 def sinais_cvns(df):
     df = df.copy()
     sinais = []
@@ -83,6 +86,7 @@ def sinais_cvns(df):
             v += 1
         else:
             n += 1
+        
         # Tendência final
         if c > v and c > n:
             sinais.append("Compra")
@@ -93,7 +97,9 @@ def sinais_cvns(df):
     df['Sinal'] = sinais
     return df
 
-# Função para plotar gráfico Plotly com cores C/V/N
+# -----------------------------
+# Função para plotar gráfico Plotly
+# -----------------------------
 def plotar_grafico(df, periodo):
     cores = {'Compra':'green', 'Venda':'red', 'Neutro':'gray'}
     x_axis = df['Datetime'].values.flatten() if 'Datetime' in df.columns else df['Date'].values.flatten()
@@ -121,7 +127,9 @@ def plotar_grafico(df, periodo):
     fig.update_layout(title=f"{ticker_input} - Período {periodo}", xaxis_rangeslider_visible=False)
     return fig
 
-# Loop de atualização
+# -----------------------------
+# Loop de atualização em tempo real
+# -----------------------------
 if ticker_input:
     placeholder = st.empty()
     while True:
@@ -131,7 +139,7 @@ if ticker_input:
             for periodo, (duracao, intervalo) in periodos.items():
                 df = yf.download(tickers=ticker_input, period=duracao, interval=intervalo, progress=False)
                 df.reset_index(inplace=True)
-                # Garantir todas colunas 1D
+                # Garantir colunas 1D
                 for col in df.select_dtypes(include=['float64', 'int64']).columns:
                     df[col] = pd.to_numeric(df[col].values.flatten(), errors='coerce')
                 df = calcular_indicadores(df)
