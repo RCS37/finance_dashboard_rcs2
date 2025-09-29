@@ -94,7 +94,7 @@ def plotar_candles(df, pivos):
 st.title("📊 Painel Financeiro Seguro")
 
 tickers = st.multiselect("Escolha ativos", ["AAPL", "TSLA", "AMD", "MSFT", "NVDA"], default=["AAPL"])
-intervalo = st.selectbox("Intervalo de candles", ["5m","15m","30m","1h","1d"], index=0)
+intervalo = st.selectbox("Intervalo de candles", ["30m","1h","1d"], index=0)
 
 for t in tickers:
     st.subheader(f"Ativo: {t}")
