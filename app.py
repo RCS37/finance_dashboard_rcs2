@@ -86,7 +86,7 @@ def sinais_cvns(df):
             v += 1
         else:
             n += 1
-        # Tendência final
+        
         if c > v and c > n:
             sinais.append("Compra")
         elif v > c and v > n:
@@ -101,34 +101,41 @@ def sinais_cvns(df):
 # -----------------------------
 def plotar_grafico(df, periodo):
     cores = {'Compra':'green', 'Venda':'red', 'Neutro':'gray'}
-    # Eixo X seguro
-    x_axis = pd.Series(df.index)
     
+    # Eixo X seguro
+    x_axis = df.index  # DatetimeIndex original é aceito pelo Plotly
+
+    # Extrair arrays 1D para o Plotly sem tocar no DataFrame
+    open_prices = df['Open'].to_numpy().flatten()
+    high_prices = df['High'].to_numpy().flatten()
+    low_prices = df['Low'].to_numpy().flatten()
+    close_prices = df['Close'].to_numpy().flatten()
+
     fig = go.Figure(data=[go.Candlestick(
         x=x_axis,
-        open=df['Open'],
-        high=df['High'],
-        low=df['Low'],
-        close=df['Close'],
+        open=open_prices,
+        high=high_prices,
+        low=low_prices,
+        close=close_prices,
         increasing_line_color='black',
         decreasing_line_color='black'
     )])
-    
+
     # Marcar sinais
     for i in range(len(df)):
         fig.add_shape(
             type="circle",
             x0=i-0.3, x1=i+0.3,
-            y0=df['Close'].iloc[i]*0.998, y1=df['Close'].iloc[i]*1.002,
+            y0=close_prices[i]*0.998, y1=close_prices[i]*1.002,
             line_color=cores[df['Sinal'].iloc[i]],
             fillcolor=cores[df['Sinal'].iloc[i]],
         )
-    
+
     fig.update_layout(title=f"{ticker_input} - Período {periodo}", xaxis_rangeslider_visible=False)
     return fig
 
 # -----------------------------
-# Loop de atualização em tempo real
+# Loop de atualização
 # -----------------------------
 if ticker_input:
     placeholder = st.empty()
@@ -136,17 +143,14 @@ if ticker_input:
         try:
             periodos = {'5m': ('7d', '5m'), '15m': ('60d', '15m'), '1h': ('730d', '1h'), '1d': ('max', '1d')}
             analises = {}
+
             for periodo, (duracao, intervalo) in periodos.items():
                 df = yf.download(tickers=ticker_input, period=duracao, interval=intervalo, progress=False)
-                # Garantir que colunas numéricas sejam Series 1D
-                for col in ['Open','High','Low','Close','Adj Close','Volume']:
-                    if col in df.columns:
-                        df[col] = pd.Series(df[col])
                 df = calcular_indicadores(df)
                 df = sinais_cvns(df)
                 analises[periodo] = df
-            
-            # Mostrar resultados e gráficos
+
+            # Mostrar gráficos e resultados
             with placeholder.container():
                 st.subheader(f"Dashboard de {ticker_input}")
                 for periodo, df in analises.items():
@@ -155,7 +159,7 @@ if ticker_input:
                     st.markdown(f"Indicadores → Compra: {sinais_ult.get('Compra',0)}, Venda: {sinais_ult.get('Venda',0)}, Neutro: {sinais_ult.get('Neutro',0)}")
                     st.markdown(f"Tendência final: {df['Sinal'].iloc[-1]}")
                     st.plotly_chart(plotar_grafico(df, periodo), use_container_width=True)
-            
+
             time.sleep(update_interval)
         except Exception as e:
             st.error(f"Erro ao buscar dados do ativo {ticker_input}: {e}")
