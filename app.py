@@ -102,14 +102,15 @@ def sinais_cvns(df):
 # -----------------------------
 def plotar_grafico(df, periodo):
     cores = {'Compra':'green', 'Venda':'red', 'Neutro':'gray'}
-    x_axis = df['Datetime'].values.flatten() if 'Datetime' in df.columns else df['Date'].values.flatten()
+    # Garantir eixo x 1D
+    x_axis = pd.Series(df['Datetime'] if 'Datetime' in df.columns else df['Date'])
     
     fig = go.Figure(data=[go.Candlestick(
         x=x_axis,
-        open=df['Open'].values.flatten(),
-        high=df['High'].values.flatten(),
-        low=df['Low'].values.flatten(),
-        close=df['Close'].values.flatten(),
+        open=pd.Series(df['Open']),
+        high=pd.Series(df['High']),
+        low=pd.Series(df['Low']),
+        close=pd.Series(df['Close']),
         increasing_line_color='black',
         decreasing_line_color='black'
     )])
@@ -139,9 +140,10 @@ if ticker_input:
             for periodo, (duracao, intervalo) in periodos.items():
                 df = yf.download(tickers=ticker_input, period=duracao, interval=intervalo, progress=False)
                 df.reset_index(inplace=True)
-                # Garantir colunas 1D
-                for col in df.select_dtypes(include=['float64', 'int64']).columns:
-                    df[col] = pd.to_numeric(df[col].values.flatten(), errors='coerce')
+                # Garantir colunas 1D explicitamente
+                for col in ['Open','High','Low','Close','Adj Close','Volume']:
+                    if col in df.columns:
+                        df[col] = pd.Series(df[col].values.ravel())
                 df = calcular_indicadores(df)
                 df = sinais_cvns(df)
                 analises[periodo] = df
