@@ -1,0 +1,5 @@
+finance_dashboard/
+│
+├─ app.py             # Código principal (versão corrigida que te enviei)
+├─ requirements.txt   # Dependências
+└─ README.md          # Instruções para deploy
