@@ -83,8 +83,7 @@ def sinais_cvns(df):
             v += 1
         else:
             n += 1
-        
-        # Definir tendência final
+        # Tendência final
         if c > v and c > n:
             sinais.append("Compra")
         elif v > c and v > n:
@@ -97,15 +96,18 @@ def sinais_cvns(df):
 # Função para plotar gráfico Plotly com cores C/V/N
 def plotar_grafico(df, periodo):
     cores = {'Compra':'green', 'Venda':'red', 'Neutro':'gray'}
+    x_axis = df['Datetime'].values.flatten() if 'Datetime' in df.columns else df['Date'].values.flatten()
+    
     fig = go.Figure(data=[go.Candlestick(
-        x=df['Datetime'] if 'Datetime' in df.columns else df['Date'],
-        open=df['Open'],
-        high=df['High'],
-        low=df['Low'],
-        close=df['Close'],
+        x=x_axis,
+        open=df['Open'].values.flatten(),
+        high=df['High'].values.flatten(),
+        low=df['Low'].values.flatten(),
+        close=df['Close'].values.flatten(),
         increasing_line_color='black',
         decreasing_line_color='black'
     )])
+    
     # Marcar sinais
     for i in range(len(df)):
         fig.add_shape(
@@ -115,6 +117,7 @@ def plotar_grafico(df, periodo):
             line_color=cores[df['Sinal'].iloc[i]],
             fillcolor=cores[df['Sinal'].iloc[i]],
         )
+    
     fig.update_layout(title=f"{ticker_input} - Período {periodo}", xaxis_rangeslider_visible=False)
     return fig
 
@@ -128,8 +131,9 @@ if ticker_input:
             for periodo, (duracao, intervalo) in periodos.items():
                 df = yf.download(tickers=ticker_input, period=duracao, interval=intervalo, progress=False)
                 df.reset_index(inplace=True)
+                # Garantir todas colunas 1D
                 for col in df.select_dtypes(include=['float64', 'int64']).columns:
-                    df[col] = pd.to_numeric(df[col].squeeze(), errors='coerce')
+                    df[col] = pd.to_numeric(df[col].values.flatten(), errors='coerce')
                 df = calcular_indicadores(df)
                 df = sinais_cvns(df)
                 analises[periodo] = df
