@@ -36,7 +36,7 @@ def gerar_indicadores(df):
         sinais.append(("RSI(14)", None, "N/A"))
 
     # MACD
-    if "macd" in df.columns and pd.notna(ultima["macd"]) and "macd_signal" in df.columns:
+    if "macd" in df.columns and pd.notna(ultima["macd"]) and "macd_signal" in df.columns and pd.notna(ultima["macd_signal"]):
         macd, macd_sig = ultima["macd"], ultima["macd_signal"]
         sinais.append(("MACD(12,26)", macd, "Compra" if macd>macd_sig else "Venda"))
     else:
@@ -94,7 +94,7 @@ def plotar_candles(df, pivos):
 st.title("📊 Painel Financeiro Seguro")
 
 tickers = st.multiselect("Escolha ativos", ["AAPL", "TSLA", "AMD", "MSFT", "NVDA"], default=["AAPL"])
-intervalo = st.selectbox("Intervalo de candles", ["30m","1h","1d"], index=0)
+intervalo = st.selectbox("Intervalo de candles", ["5m","15m","30m","1h","1d"], index=0)
 
 for t in tickers:
     st.subheader(f"Ativo: {t}")
@@ -106,22 +106,33 @@ for t in tickers:
         continue
 
     df = df.reset_index()
-    df["Close"] = df["Close"].astype(float)
-    df["Open"] = df["Open"].astype(float)
-    df["High"] = df["High"].astype(float)
-    df["Low"] = df["Low"].astype(float)
+    for col in ["Close", "Open", "High", "Low"]:
+        df[col] = pd.to_numeric(df[col], errors='coerce')
 
-    # Indicadores - verifica tamanho
-    if len(df) >= 14:
+    df = df.dropna(subset=["Close", "Open", "High", "Low"])
+    if df.empty:
+        st.warning(f"Após limpeza, não há dados válidos para {t}")
+        continue
+
+    # Indicadores - cálculo seguro
+    if len(df["Close"]) >= 14:
         df["rsi"] = ta.momentum.RSIIndicator(df["Close"]).rsi()
-    if len(df) >= 26:
-        macd = ta.trend.MACD(df["Close"])
-        df["macd"], df["macd_signal"] = macd.macd(), macd.macd_signal()
-    if len(df) >= 14:
         df["adx"] = ta.trend.ADXIndicator(df["High"], df["Low"], df["Close"]).adx()
+    else:
+        df["rsi"] = df["adx"] = pd.Series([None]*len(df))
+    if len(df["Close"]) >= 26:
+        macd = ta.trend.MACD(df["Close"])
+        df["macd"] = macd.macd()
+        df["macd_signal"] = macd.macd_signal()
+    else:
+        df["macd"] = df["macd_signal"] = pd.Series([None]*len(df))
+
+    # Médias móveis seguras
     for ma in [5,20,50,200]:
-        if len(df) >= ma:
+        if len(df["Close"]) >= ma:
             df[f"ma{ma}"] = ta.trend.SMAIndicator(df["Close"], window=ma).sma_indicator()
+        else:
+            df[f"ma{ma}"] = pd.Series([None]*len(df))
 
     # Sinais
     st.dataframe(gerar_indicadores(df))
