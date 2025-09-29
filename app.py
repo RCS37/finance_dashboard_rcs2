@@ -1,56 +1,60 @@
 import streamlit as st
+import yfinance as yf
 import pandas as pd
+from streamlit_autorefresh import st_autorefresh
+
+# -------------------------------
+# Auto refresh a cada 60 segundos
+# -------------------------------
+st_autorefresh(interval=60*1000, limit=None, key="data_refresh")
 
 # -------------------------------
 # Título do App
 # -------------------------------
-st.title("Finance Dashboard RCS2")
+st.title("Finance Dashboard em Tempo Real")
 
 # -------------------------------
-# Carregar dados
+# Seleção de ativo
 # -------------------------------
-uploaded_file = st.file_uploader("Escolha um arquivo CSV", type="csv")
-if uploaded_file is not None:
-    df = pd.read_csv(uploaded_file)
-    st.write("Dados carregados com sucesso:")
-    st.dataframe(df.head())
-else:
-    st.warning("Por favor, faça upload de um arquivo CSV.")
-    st.stop()
+ticker_input = st.text_input("Digite o símbolo do ativo (ex: AAPL, TSLA, WDO=F):", "AAPL")
 
-# -------------------------------
-# Conversão segura para numérico
-# -------------------------------
-st.subheader("Conversão de colunas para numérico")
-for col in df.columns:
+if ticker_input:
     try:
-        # Tenta converter a coluna para numérico
-        df[col] = pd.to_numeric(df[col].squeeze(), errors='coerce')
-        st.success(f"Coluna '{col}' convertida com sucesso.")
+        # -------------------------------
+        # Buscar dados do Yahoo Finance
+        # -------------------------------
+        ticker = yf.Ticker(ticker_input)
+        df = ticker.history(period="5d", interval="1h")  # últimos 5 dias, intervalo de 1h
+        df.reset_index(inplace=True)
+
+        st.subheader(f"Últimos dados do ativo {ticker_input}")
+        st.dataframe(df)
+
+        # -------------------------------
+        # Conversão segura para numérico
+        # -------------------------------
+        for col in df.select_dtypes(include=['float64', 'int64']).columns:
+            try:
+                df[col] = pd.to_numeric(df[col].squeeze(), errors='coerce')
+            except Exception as e:
+                st.warning(f"Não foi possível converter a coluna '{col}': {e}")
+
+        # -------------------------------
+        # Estatísticas descritivas
+        # -------------------------------
+        if st.checkbox("Mostrar estatísticas descritivas"):
+            st.subheader("Estatísticas descritivas")
+            st.write(df.describe())
+
+        # -------------------------------
+        # Gráfico de fechamento
+        # -------------------------------
+        if st.checkbox("Mostrar gráfico de fechamento"):
+            st.subheader("Gráfico de preço de fechamento")
+            st.line_chart(df['Close'])
+
     except Exception as e:
-        st.warning(f"Não foi possível converter a coluna '{col}': {e}")
+        st.error(f"Erro ao buscar dados do ativo {ticker_input}: {e}")
 
-# -------------------------------
-# Mostrar dados após conversão
-# -------------------------------
-st.subheader("Dados após conversão")
-st.dataframe(df.head())
-
-# -------------------------------
-# Estatísticas descritivas (opcional)
-# -------------------------------
-if st.checkbox("Mostrar estatísticas descritivas"):
-    st.subheader("Estatísticas descritivas")
-    st.write(df.describe())
-
-# -------------------------------
-# Exemplo de gráfico simples
-# -------------------------------
-if st.checkbox("Mostrar gráfico de uma coluna numérica"):
-    numeric_cols = df.select_dtypes(include=['float64', 'int64']).columns.tolist()
-    if numeric_cols:
-        selected_col = st.selectbox("Selecione a coluna para gráfico", numeric_cols)
-        st.line_chart(df[selected_col])
-    else:
-        st.info("Não há colunas numéricas para plotar.")
-
+else:
+    st.info("Digite um símbolo de ativo para buscar os dados.")
