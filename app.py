@@ -86,7 +86,6 @@ def sinais_cvns(df):
             v += 1
         else:
             n += 1
-        
         # Tendência final
         if c > v and c > n:
             sinais.append("Compra")
@@ -102,15 +101,15 @@ def sinais_cvns(df):
 # -----------------------------
 def plotar_grafico(df, periodo):
     cores = {'Compra':'green', 'Venda':'red', 'Neutro':'gray'}
-    # Garantir eixo x 1D
-    x_axis = pd.Series(df['Datetime'] if 'Datetime' in df.columns else df['Date'])
+    # Eixo X seguro
+    x_axis = pd.Series(df.index)
     
     fig = go.Figure(data=[go.Candlestick(
         x=x_axis,
-        open=pd.Series(df['Open']),
-        high=pd.Series(df['High']),
-        low=pd.Series(df['Low']),
-        close=pd.Series(df['Close']),
+        open=df['Open'],
+        high=df['High'],
+        low=df['Low'],
+        close=df['Close'],
         increasing_line_color='black',
         decreasing_line_color='black'
     )])
@@ -139,11 +138,10 @@ if ticker_input:
             analises = {}
             for periodo, (duracao, intervalo) in periodos.items():
                 df = yf.download(tickers=ticker_input, period=duracao, interval=intervalo, progress=False)
-                df.reset_index(inplace=True)
-                # Garantir colunas 1D explicitamente
+                # Garantir que colunas numéricas sejam Series 1D
                 for col in ['Open','High','Low','Close','Adj Close','Volume']:
                     if col in df.columns:
-                        df[col] = pd.Series(df[col].values.ravel())
+                        df[col] = pd.Series(df[col])
                 df = calcular_indicadores(df)
                 df = sinais_cvns(df)
                 analises[periodo] = df
